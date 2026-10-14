@@ -11,7 +11,13 @@
     
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; }
-        .table-container { max-width: 100%; overflow-x: auto; overflow-y: visible; }
+        .table-container {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: auto;
+            -webkit-overflow-scrolling: touch;
+        }
         
         /* ปรับความกว้างคอลัมน์ KPI ให้แคบลงพอดี (ปรับ min-width และ max-width ให้เล็กลง) */
         .sticky-col-1 { 
@@ -78,7 +84,7 @@
             <!-- S1: EVALUATION VIEW -->
             <div id="s1-eval-view" class="flex-col gap-6 flex">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                    <h2 class="text-lg font-bold text-gray-800 mb-3">เกณฑ์การให้คะแนน (1 - 10)</h2>
+                    <h2 class="text-lg font-bold text-gray-800 mb-3">เกณฑ์การให้คะแนน (1 - 10) <span class="text-xs font-normal text-red-600 ml-2">* กรุณาใส่คะแนนให้ครบทุกช่อง (ลำดับที่ 1 - 29 และครบทั้ง 12 หัวข้อ KPI)</span></h2>
                     <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs text-center">
                         <div class="bg-red-50 text-red-800 p-2 rounded-lg border border-red-200"><span class="block font-bold text-lg mb-1">1-2</span>ต่ำกว่าเกณฑ์</div>
                         <div class="bg-orange-50 text-orange-800 p-2 rounded-lg border border-orange-200"><span class="block font-bold text-lg mb-1">3-4</span>ต้องปรับปรุง</div>
@@ -89,8 +95,8 @@
                 </div>
 
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                    <div class="flex-1 md:flex-none justify-center text-xs sm:text-sm font-medium text-orange-600 bg-orange-100 px-4 py-2.5 rounded-full flex items-center gap-2">
-                        กรอกคะแนนไปแล้ว <span id="s1-filled-count" class="font-bold text-base ml-1">0</span> / <span id="s1-total-count">348</span>
+                    <div id="s1-status-badge" class="flex-1 md:flex-none justify-center text-xs sm:text-sm font-medium text-orange-600 bg-orange-100 px-4 py-2.5 rounded-full flex items-center gap-2 transition-colors">
+                        <span id="s1-status-text">กรอกคะแนนไปแล้ว</span> <span id="s1-filled-count" class="font-bold text-base ml-1">0</span> / <span id="s1-total-count">348</span>
                     </div>
                     <div class="flex flex-wrap gap-2 w-full md:w-auto">
                         <button onclick="s1ExportAndShare()" class="flex-1 md:flex-none bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-center gap-2">
@@ -104,7 +110,7 @@
                 </div>
 
                 <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                    <div class="table-container pb-4">
+                    <div id="s1-table-container" class="table-container pb-4">
                         <table class="w-full text-left border-collapse w-auto">
                             <thead id="s1-table-header"></thead>
                             <tbody id="s1-table-body" class="divide-y divide-gray-100"></tbody>
@@ -252,7 +258,7 @@
                 </div>
 
                 <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                    <div class="table-container pb-4">
+                    <div id="s2-table-container" class="table-container pb-4">
                         <table class="w-full text-left border-collapse w-auto">
                             <thead id="s2-table-header"></thead>
                             <tbody id="s2-table-body" class="divide-y divide-gray-100"></tbody>
@@ -410,6 +416,7 @@
             { id: 11, name: "มีจิตอาสา/จิตสาธารณะ", desc: "ช่วยเหลือผู้อื่น" },
             { id: 12, name: "เป็นแบบอย่างที่ดี", desc: "เป็นแรงบันดาลใจ" }
         ];
+        const TOTAL_SYS1_FIELDS = personnel.length * criteria1.length; // 29 * 12 = 348
         const tbOrder = [12, 11, 3, 8, 7, 6]; 
 
         // STATES
@@ -423,8 +430,33 @@
         window.onload = () => {
             initSys1();
             initSys2();
+            setupHorizontalWheelScroll();
             switchApp('sys1');
         };
+
+        // --- HORIZONTAL WHEEL SCROLL IN TABLE AREA (CAPTURE PHASE) ---
+        function setupHorizontalWheelScroll() {
+            window.addEventListener('wheel', function(e) {
+                const container = e.target && e.target.closest ? e.target.closest('.table-container') : null;
+                if (!container) {
+                    // อยู่นอกพื้นที่ตารางลงคะแนน -> ปล่อยให้หน้าเว็บเลื่อนขึ้น-ลงตามปกติ
+                    return;
+                }
+
+                // อยู่ในพื้นที่ตารางลงคะแนน -> บล็อกการเลื่อนขึ้น-ลงของหน้าเว็บและป้องกัน input[type=number] เปลี่ยนค่า
+                e.preventDefault();
+                e.stopPropagation();
+
+                let delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+                if (e.deltaMode === 1) {
+                    delta *= 40; // สำหรับเมาส์หรือเบราว์เซอร์ที่ส่งค่าเป็นบรรทัด (DOM_DELTA_LINE)
+                } else if (e.deltaMode === 2) {
+                    delta *= container.clientWidth * 0.8; // DOM_DELTA_PAGE
+                }
+
+                container.scrollLeft += delta;
+            }, { passive: false, capture: true });
+        }
 
         function showToast(msg, type="info") {
             const container = document.getElementById('toast-container');
@@ -433,7 +465,7 @@
             toast.className = `flex items-center px-4 py-3 rounded shadow-lg text-white font-medium text-sm transition-all duration-300 ${cls}`;
             toast.innerHTML = msg;
             container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(()=>toast.remove(),300); }, 3000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(()=>toast.remove(),300); }, 3500);
         }
 
         // ================= GLOBAL APP SWITCHER =================
@@ -539,10 +571,11 @@
         // ================= SYSTEM 1 (PUBLIC EVALUATION) =================
         function initSys1() {
             personnel.forEach((p,i) => { if(!scores1[i]) scores1[i] = {}; });
+            document.getElementById('s1-total-count').innerText = TOTAL_SYS1_FIELDS;
             
             let thead = `<tr class="bg-slate-800 border-b-2 border-slate-700 text-white"><th class="sticky-col-1 py-3 px-2 sm:px-3 shadow-sm align-middle bg-slate-900 border-r border-slate-700"><div class="font-semibold text-sm sm:text-base text-center whitespace-nowrap">หัวข้อ (KPI)</div></th>`;
             personnel.forEach((p,i) => {
-                thead += `<th class="py-2 px-2 sm:py-3 sm:px-3 text-center font-medium text-xs sm:text-sm align-top leading-tight border-r border-slate-700 transition-colors duration-200 w-auto">
+                thead += `<th id="s1-th-p-${i}" class="py-2 px-2 sm:py-3 sm:px-3 text-center font-medium text-xs sm:text-sm align-top leading-tight border-r border-slate-700 transition-colors duration-200 w-auto">
                     <span class="block text-slate-400 text-[10px] sm:text-[11px] mb-1">ลำดับ ${i+1}</span>
                     <span class="whitespace-nowrap inline-block px-1">${p}</span>
                 </th>`;
@@ -563,9 +596,9 @@
                         </div>
                     </td>`;
                 personnel.forEach((p, pIdx) => {
-                    let val = scores1[pIdx][c.id] || '';
+                    let val = (scores1[pIdx] && scores1[pIdx][c.id] !== undefined) ? scores1[pIdx][c.id] : '';
                     tbody += `<td class="py-1 px-1 sm:py-2 sm:px-2 text-center border-r border-gray-200 align-middle">
-                        <input type="number" min="1" max="10" step="1" inputmode="numeric" pattern="^([1-9]|10)$" data-p="${pIdx}" data-c="${c.id}" value="${val}" onchange="s1Input(this)" class="touch-target min-w-[60px] max-w-[80px] w-full mx-auto block text-center py-1 sm:py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base font-bold text-blue-900 placeholder-gray-300" placeholder="-">
+                        <input type="number" min="1" max="10" step="1" inputmode="numeric" pattern="^([1-9]|10)$" required data-p="${pIdx}" data-c="${c.id}" value="${val}" onchange="s1Input(this)" oninput="s1ClearHighlight(this)" class="touch-target min-w-[60px] max-w-[80px] w-full mx-auto block text-center py-1 sm:py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base font-bold text-blue-900 placeholder-gray-300 transition-colors" placeholder="-">
                     </td>`;
                 });
                 tbody += `</tr>`;
@@ -580,12 +613,26 @@
             s1Calc();
         }
 
+        function s1ClearHighlight(el) {
+            el.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-400');
+            if (!el.classList.contains('border-gray-300')) {
+                el.classList.add('border-gray-300', 'bg-white');
+            }
+        }
+
         function s1Input(el) {
-            let p = el.dataset.p, c = el.dataset.c, v = parseInt(el.value);
-            if(el.value && (isNaN(v) || v<1 || v>10)) {
-                showToast("กรุณาระบุคะแนน 1-10 เท่านั้น", "error"); el.value = ''; delete scores1[p][c];
+            let p = el.dataset.p, c = el.dataset.c, v = parseInt(el.value, 10);
+            if(el.value !== '' && (isNaN(v) || v < 1 || v > 10 || String(v) !== el.value.trim())) {
+                showToast("กรุณาระบุคะแนนเป็นจำนวนเต็ม 1 - 10 เท่านั้น", "error");
+                el.value = '';
+                delete scores1[p][c];
             } else {
-                if(el.value) scores1[p][c] = v; else delete scores1[p][c];
+                if(el.value !== '') {
+                    scores1[p][c] = v;
+                    s1ClearHighlight(el);
+                } else {
+                    delete scores1[p][c];
+                }
             }
             s1Calc();
             localStorage.setItem('sys1_scores_v7', JSON.stringify(scores1));
@@ -595,13 +642,95 @@
             let filled = 0;
             personnel.forEach((p,i) => {
                 let sum = 0;
-                for(let k in scores1[i]) { sum += scores1[i][k]; filled++; }
-                document.getElementById(`s1-sum-${i}`).innerText = sum;
+                let personCount = 0;
+                for(let k in scores1[i]) {
+                    let val = scores1[i][k];
+                    if (val >= 1 && val <= 10) {
+                        sum += val;
+                        filled++;
+                        personCount++;
+                    }
+                }
+                const sumEl = document.getElementById(`s1-sum-${i}`);
+                if (sumEl) sumEl.innerText = sum;
+                const thEl = document.getElementById(`s1-th-p-${i}`);
+                if (thEl) {
+                    if (personCount === criteria1.length) {
+                        thEl.classList.add('bg-emerald-900/60');
+                    } else {
+                        thEl.classList.remove('bg-emerald-900/60');
+                    }
+                }
             });
             document.getElementById('s1-filled-count').innerText = filled;
+
+            const badge = document.getElementById('s1-status-badge');
+            const statusText = document.getElementById('s1-status-text');
+            if (filled === TOTAL_SYS1_FIELDS) {
+                badge.classList.remove('text-orange-600', 'bg-orange-100');
+                badge.classList.add('text-green-700', 'bg-green-100');
+                statusText.innerText = 'กรอกคะแนนครบทุกช่องแล้ว';
+            } else {
+                badge.classList.remove('text-green-700', 'bg-green-100');
+                badge.classList.add('text-orange-600', 'bg-orange-100');
+                statusText.innerText = 'กรอกคะแนนไปแล้ว';
+            }
+            return filled;
+        }
+
+        // ตรวจสอบว่าใส่คะแนนครบทุกช่อง (ลำดับที่ 1-29 และครบทั้ง 12 ข้อ KPI) หรือไม่
+        function validateSys1AllFilled() {
+            let missingCount = 0;
+            let firstMissingInput = null;
+            let firstMissingPersonIdx = null;
+            let firstMissingCriteriaId = null;
+
+            for (let pIdx = 0; pIdx < personnel.length; pIdx++) {
+                for (let cIdx = 0; cIdx < criteria1.length; cIdx++) {
+                    const cId = criteria1[cIdx].id;
+                    const val = scores1[pIdx] ? scores1[pIdx][cId] : undefined;
+                    const inputEl = document.querySelector(`#s1-table-body input[data-p="${pIdx}"][data-c="${cId}"]`);
+                    if (val === undefined || val === '' || isNaN(val) || val < 1 || val > 10) {
+                        missingCount++;
+                        if (inputEl) {
+                            inputEl.classList.remove('border-gray-300', 'bg-white');
+                            inputEl.classList.add('border-red-500', 'bg-red-50');
+                        }
+                        if (!firstMissingInput && inputEl) {
+                            firstMissingInput = inputEl;
+                            firstMissingPersonIdx = pIdx;
+                            firstMissingCriteriaId = cId;
+                        }
+                    } else if (inputEl) {
+                        s1ClearHighlight(inputEl);
+                    }
+                }
+            }
+
+            if (missingCount > 0) {
+                const personName = personnel[firstMissingPersonIdx];
+                showToast(`กรุณาใส่คะแนนให้ครบทุกช่อง! (ยังขาดอีก ${missingCount} ช่อง — เริ่มที่ ลำดับ ${firstMissingPersonIdx + 1}: ${personName} ข้อที่ ${firstMissingCriteriaId})`, "error");
+                if (firstMissingInput) {
+                    const container = document.getElementById('s1-table-container');
+                    if (container) {
+                        const stickyWidth = 240;
+                        const targetLeft = firstMissingInput.closest('td').offsetLeft - stickyWidth - 20;
+                        container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                    }
+                    setTimeout(() => {
+                        firstMissingInput.focus({ preventScroll: false });
+                    }, 250);
+                }
+                return false;
+            }
+            return true;
         }
 
         function s1SwitchTab(tab) {
+            if ((tab === 'result' || tab === 'analysis') && !validateSys1AllFilled()) {
+                return;
+            }
+
             ['eval','result','analysis'].forEach(t => {
                 document.getElementById(`s1-${t}-view`).classList.add('hidden');
                 document.getElementById(`s1-${t}-view`).classList.remove('flex');
@@ -613,7 +742,7 @@
             
             if(tab==='result') s1RenderResult();
             if(tab==='analysis') {
-                document.getElementById('s1-person-select').innerHTML = personnel.map((p,i)=>`<option value="${i}">${p}</option>`).join('');
+                document.getElementById('s1-person-select').innerHTML = personnel.map((p,i)=>`<option value="${i}">${i+1}. ${p}</option>`).join('');
                 s1UpdateAnalysis();
             }
         }
@@ -680,14 +809,23 @@
         }
 
         function s1ExportAndShare() {
+            // บังคับต้องกรอกคะแนนครบทุกช่อง (ลำดับที่ 1-29 และ KPI 12 ข้อ รวม 348 ช่อง) ก่อนส่งออก
+            if (!validateSys1AllFilled()) {
+                return;
+            }
+
             let res = getSortedSys1Results().filter(x=>x.sum>0); 
 
             if(res.length===0) return showToast("กรุณาลงคะแนนก่อน", "error");
 
-            let txt = `---ผลการประเมินบุคคลดีเด่น---\n`;
-            txt += `อันดับ 1 : ${res[0] ? res[0].p : '-'}\n`;
-            txt += `อันดับ 2 : ${res[1] ? res[1].p : '-'}\n`;
-            txt += `อันดับ 3 : ${res[2] ? res[2].p : '-'}\n`;
+            let txt = `---ผลการประเมินบุคคลดีเด่น---
+`;
+            txt += `อันดับ 1 : ${res[0] ? res[0].p : '-'}
+`;
+            txt += `อันดับ 2 : ${res[1] ? res[1].p : '-'}
+`;
+            txt += `อันดับ 3 : ${res[2] ? res[2].p : '-'}
+`;
 
             const fileName = `Eval_Rank_${Date.now()}.txt`;
             const file = new File([txt], fileName, { type: "text/plain" });
