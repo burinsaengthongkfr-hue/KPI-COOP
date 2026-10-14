@@ -338,8 +338,12 @@
                 <p class="text-sm text-gray-500">กรุณาเข้าสู่ระบบด้วยสิทธิ์ผู้ดูแล</p>
             </div>
             <div id="login-form" class="space-y-4" onkeydown="if(event.key === 'Enter') login()">
-                <input type="text" id="login-u" placeholder="ชื่อผู้ใช้งาน" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="login-p" placeholder="รหัสผ่าน" class="w-full px-4 py-3 rounded border">
+                <input type="text" id="login-u" name="username" autocomplete="username" placeholder="ชื่อผู้ใช้งาน" class="w-full px-4 py-3 rounded border">
+                <input type="password" id="login-p" name="password" autocomplete="current-password" placeholder="รหัสผ่าน" class="w-full px-4 py-3 rounded border">
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                    <input type="checkbox" id="remember-me" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <span>จำชื่อผู้ใช้งานและรหัสผ่านไว้ในเครื่องนี้</span>
+                </label>
                 <button onclick="login()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700">เข้าสู่ระบบ</button>
                 <div class="flex justify-between text-sm text-blue-600 mt-2">
                     <span onclick="toggleAuth('register')" class="cursor-pointer hover:underline">ลงทะเบียนแอดมินใหม่</span>
@@ -431,8 +435,24 @@
             initSys1();
             initSys2();
             setupHorizontalWheelScroll();
+            loadSavedAdminCreds();
+            if(sessionStorage.getItem('adminLoggedIn') === 'true' || localStorage.getItem('adminLoggedIn') === 'true') {
+                document.getElementById('btn-logout').classList.remove('hidden');
+            }
             switchApp('sys1');
         };
+
+        function loadSavedAdminCreds() {
+            const saved = JSON.parse(localStorage.getItem('admin_saved_creds') || 'null');
+            if (saved && saved.u) {
+                const uEl = document.getElementById('login-u');
+                const pEl = document.getElementById('login-p');
+                const remEl = document.getElementById('remember-me');
+                if (uEl) uEl.value = saved.u;
+                if (pEl) pEl.value = saved.p || '';
+                if (remEl) remEl.checked = true;
+            }
+        }
 
         // --- HORIZONTAL WHEEL SCROLL IN TABLE AREA (CAPTURE PHASE) ---
         function setupHorizontalWheelScroll() {
@@ -490,11 +510,13 @@
 
         // ================= AUTH LOGIC =================
         function requireAdminLogin() {
-            if(sessionStorage.getItem('adminLoggedIn') === 'true') {
+            if(sessionStorage.getItem('adminLoggedIn') === 'true' || localStorage.getItem('adminLoggedIn') === 'true') {
+                document.getElementById('btn-logout').classList.remove('hidden');
                 switchApp('sys2');
             } else {
                 document.getElementById('auth-modal').classList.remove('hidden');
                 toggleAuth('login');
+                loadSavedAdminCreds();
                 setTimeout(() => document.getElementById('login-u').focus(), 100);
             }
         }
@@ -502,6 +524,7 @@
         function toggleAuth(view) {
             ['login','register','forgot'].forEach(v => document.getElementById(`${v}-form`).classList.add('hidden'));
             document.getElementById(`${view}-form`).classList.remove('hidden');
+            if(view === 'login') loadSavedAdminCreds();
             setTimeout(() => {
                 if(view === 'login') document.getElementById('login-u').focus();
                 else if(view === 'register') document.getElementById('reg-u').focus();
@@ -509,19 +532,32 @@
             }, 100);
         }
         function register() {
-            let u = document.getElementById('reg-u').value, p = document.getElementById('reg-p').value, s = document.getElementById('reg-s').value;
+            let u = document.getElementById('reg-u').value.trim(), p = document.getElementById('reg-p').value, s = document.getElementById('reg-s').value;
             if(!u || !p) return showToast("กรอกข้อมูลให้ครบ", "error");
             if(s !== SECRET) return showToast("รหัสลับไม่ถูกต้อง!", "error");
             let db = JSON.parse(localStorage.getItem('admin_db')) || {};
             if(db[u]) return showToast("ชื่อผู้ใช้นี้มีแล้ว", "error");
-            db[u] = p; localStorage.setItem('admin_db', JSON.stringify(db));
-            showToast("ลงทะเบียนสำเร็จ", "success"); toggleAuth('login');
+            db[u] = p;
+            localStorage.setItem('admin_db', JSON.stringify(db));
+            // จำค่า User & Password ที่เพิ่งลงทะเบียนไว้ให้อัตโนมัติ
+            localStorage.setItem('admin_saved_creds', JSON.stringify({ u: u, p: p }));
+            loadSavedAdminCreds();
+            showToast("ลงทะเบียนและจำรหัสผ่านสำเร็จ", "success");
+            toggleAuth('login');
         }
         function login() {
-            let u = document.getElementById('login-u').value, p = document.getElementById('login-p').value;
+            let u = document.getElementById('login-u').value.trim(), p = document.getElementById('login-p').value;
+            let remember = document.getElementById('remember-me') ? document.getElementById('remember-me').checked : true;
             let db = JSON.parse(localStorage.getItem('admin_db')) || {};
             if(db[u] && db[u] === p) {
                 sessionStorage.setItem('adminLoggedIn', 'true');
+                if (remember) {
+                    localStorage.setItem('admin_saved_creds', JSON.stringify({ u: u, p: p }));
+                    localStorage.setItem('adminLoggedIn', 'true');
+                } else {
+                    localStorage.removeItem('admin_saved_creds');
+                    localStorage.removeItem('adminLoggedIn');
+                }
                 closeAuthModal();
                 document.getElementById('btn-logout').classList.remove('hidden');
                 switchApp('sys2');
@@ -530,15 +566,20 @@
             }
         }
         function resetPass() {
-            let u = document.getElementById('forgot-u').value, p = document.getElementById('forgot-p').value, s = document.getElementById('forgot-s').value;
+            let u = document.getElementById('forgot-u').value.trim(), p = document.getElementById('forgot-p').value, s = document.getElementById('forgot-s').value;
             let db = JSON.parse(localStorage.getItem('admin_db')) || {};
             if(!db[u]) return showToast("ไม่พบผู้ใช้", "error");
             if(s !== SECRET) return showToast("รหัสลับผิด!", "error");
-            db[u] = p; localStorage.setItem('admin_db', JSON.stringify(db));
-            showToast("เปลี่ยนรหัสผ่านสำเร็จ", "success"); toggleAuth('login');
+            db[u] = p;
+            localStorage.setItem('admin_db', JSON.stringify(db));
+            localStorage.setItem('admin_saved_creds', JSON.stringify({ u: u, p: p }));
+            loadSavedAdminCreds();
+            showToast("เปลี่ยนรหัสผ่านและจำค่าใหม่สำเร็จ", "success");
+            toggleAuth('login');
         }
         function logoutAdmin() {
             sessionStorage.removeItem('adminLoggedIn');
+            localStorage.removeItem('adminLoggedIn');
             document.getElementById('btn-logout').classList.add('hidden');
             switchApp('sys1');
             showToast("ออกจากระบบแอดมินแล้ว", "success");
