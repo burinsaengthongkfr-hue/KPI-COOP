@@ -393,15 +393,11 @@
             <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             <div class="text-center mb-6">
                 <h2 class="text-2xl font-bold text-blue-900">แอดมินสรุปผล (ระบบ 2)</h2>
-                <p class="text-sm text-gray-500">กรุณาเข้าสู่ระบบด้วยสิทธิ์ผู้ดูแล (ค่าเริ่มต้น: admin / suthin)</p>
+                <p class="text-sm text-gray-500">กรุณาเข้าสู่ระบบด้วยสิทธิ์ผู้ดูแลระบบ</p>
             </div>
             <div id="login-form" class="space-y-4" onkeydown="if(event.key === 'Enter') login()">
-                <input type="text" id="login-u" name="username" autocomplete="username" placeholder="ชื่อผู้ใช้งาน (เช่น admin)" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="login-p" name="password" autocomplete="current-password" placeholder="รหัสผ่าน (เช่น suthin)" class="w-full px-4 py-3 rounded border">
-                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                    <input type="checkbox" id="remember-me" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                    <span>จำชื่อผู้ใช้งานและรหัสผ่านไว้ในเครื่องนี้</span>
-                </label>
+                <input type="text" id="login-u" name="username" autocomplete="off" value="" placeholder="ชื่อผู้ใช้งาน" class="w-full px-4 py-3 rounded border">
+                <input type="password" id="login-p" name="password" autocomplete="new-password" value="" placeholder="รหัสผ่าน" class="w-full px-4 py-3 rounded border">
                 <button onclick="login()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700">เข้าสู่ระบบ</button>
                 <div class="flex justify-between text-sm text-blue-600 mt-2">
                     <span onclick="toggleAuth('register')" class="cursor-pointer hover:underline">ลงทะเบียนแอดมินใหม่</span>
@@ -409,16 +405,16 @@
                 </div>
             </div>
             <div id="register-form" class="space-y-4 hidden" onkeydown="if(event.key === 'Enter') register()">
-                <input type="text" id="reg-u" placeholder="ชื่อผู้ใช้งานใหม่" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="reg-p" placeholder="ตั้งรหัสผ่าน" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="reg-s" placeholder="" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
+                <input type="text" id="reg-u" autocomplete="off" placeholder="ชื่อผู้ใช้งานใหม่" class="w-full px-4 py-3 rounded border">
+                <input type="password" id="reg-p" autocomplete="new-password" placeholder="ตั้งรหัสผ่าน" class="w-full px-4 py-3 rounded border">
+                <input type="password" id="reg-s" autocomplete="new-password" placeholder="รหัสลับผู้ดูแลระบบ" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
                 <button onclick="register()" class="w-full bg-green-600 text-white font-bold py-3 rounded">ยืนยันลงทะเบียน</button>
                 <div class="text-center text-sm text-blue-600 mt-2"><span onclick="toggleAuth('login')" class="cursor-pointer hover:underline">กลับไปหน้าล็อกอิน</span></div>
             </div>
             <div id="forgot-form" class="space-y-4 hidden" onkeydown="if(event.key === 'Enter') resetPass()">
-                <input type="text" id="forgot-u" placeholder="ชื่อผู้ใช้งานของคุณ" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="forgot-p" placeholder="ตั้งรหัสผ่านใหม่" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="forgot-s" placeholder="" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
+                <input type="text" id="forgot-u" autocomplete="off" placeholder="ชื่อผู้ใช้งานของคุณ" class="w-full px-4 py-3 rounded border">
+                <input type="password" id="forgot-p" autocomplete="new-password" placeholder="ตั้งรหัสผ่านใหม่" class="w-full px-4 py-3 rounded border">
+                <input type="password" id="forgot-s" autocomplete="new-password" placeholder="รหัสลับผู้ดูแลระบบ" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
                 <button onclick="resetPass()" class="w-full bg-orange-500 text-white font-bold py-3 rounded">เปลี่ยนรหัสผ่าน</button>
                 <div class="text-center text-sm text-blue-600 mt-2"><span onclick="toggleAuth('login')" class="cursor-pointer hover:underline">กลับไปหน้าล็อกอิน</span></div>
             </div>
@@ -518,7 +514,7 @@
             try {
                 if (sessionStorage.getItem('adminLoggedIn') === 'true') return true;
             } catch (e) {}
-            return safeGet('adminLoggedIn', false) === true;
+            return false;
         }
 
         // ควบคุมการแสดงปุ่มเฉพาะแอดมิน (ผู้ประเมินทั่วไปจะมองไม่เห็นปุ่มสุ่มคะแนน)
@@ -564,38 +560,32 @@
                 db['admin'] = SECRET;
                 safeSet('admin_db', db);
             }
-            let saved = safeGet('admin_saved_creds', null);
-            if (!saved) {
-                safeSet('admin_saved_creds', { u: 'admin', p: SECRET });
-            }
+            // ล้างค่า user/password ที่เคยค้างไว้ในเครื่องออกทั้งหมด
+            safeRemove('admin_saved_creds');
+            safeRemove('adminLoggedIn');
+        }
+
+        function clearAuthInputs() {
+            ['login-u', 'login-p', 'reg-u', 'reg-p', 'reg-s', 'forgot-u', 'forgot-p', 'forgot-s'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
         }
 
         function bootApp() {
             if (appInitialized) return;
             appInitialized = true;
             ensureDefaultAdmin();
+            clearAuthInputs();
             initSys1();
             initSys2();
             setupHorizontalWheelScroll();
-            loadSavedAdminCreds();
             updateAdminUI();
             switchApp('sys1');
         }
 
         document.addEventListener('DOMContentLoaded', bootApp);
         window.addEventListener('load', bootApp);
-
-        function loadSavedAdminCreds() {
-            const saved = safeGet('admin_saved_creds', null);
-            if (saved && saved.u) {
-                const uEl = document.getElementById('login-u');
-                const pEl = document.getElementById('login-p');
-                const remEl = document.getElementById('remember-me');
-                if (uEl) uEl.value = saved.u;
-                if (pEl) pEl.value = saved.p || '';
-                if (remEl) remEl.checked = true;
-            }
-        }
 
         // --- HORIZONTAL WHEEL SCROLL IN TABLE AREA ---
         function setupHorizontalWheelScroll() {
@@ -654,17 +644,20 @@
                 updateAdminUI();
                 switchApp('sys2');
             } else {
+                clearAuthInputs();
                 document.getElementById('auth-modal').classList.remove('hidden');
                 toggleAuth('login');
-                loadSavedAdminCreds();
                 setTimeout(() => document.getElementById('login-u').focus(), 100);
             }
         }
-        function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
+        function closeAuthModal() {
+            clearAuthInputs();
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
         function toggleAuth(view) {
+            clearAuthInputs();
             ['login','register','forgot'].forEach(v => document.getElementById(`${v}-form`).classList.add('hidden'));
             document.getElementById(`${view}-form`).classList.remove('hidden');
-            if (view === 'login') loadSavedAdminCreds();
             setTimeout(() => {
                 if (view === 'login') document.getElementById('login-u').focus();
                 else if (view === 'register') document.getElementById('reg-u').focus();
@@ -679,30 +672,21 @@
             if (db[u]) return showToast("ชื่อผู้ใช้นี้มีแล้ว", "error");
             db[u] = p;
             safeSet('admin_db', db);
-            safeSet('admin_saved_creds', { u: u, p: p });
-            loadSavedAdminCreds();
-            showToast("ลงทะเบียนและจำรหัสผ่านสำเร็จ", "success");
+            showToast("ลงทะเบียนแอดมินสำเร็จ", "success");
             toggleAuth('login');
         }
         function login() {
             let u = document.getElementById('login-u').value.trim(), p = document.getElementById('login-p').value;
-            let remember = document.getElementById('remember-me') ? document.getElementById('remember-me').checked : true;
             let db = safeGet('admin_db', {});
             if ((db[u] && db[u] === p) || (u === 'admin' && p === SECRET)) {
                 try { sessionStorage.setItem('adminLoggedIn', 'true'); } catch (e) {}
-                if (remember) {
-                    safeSet('admin_saved_creds', { u: u, p: p });
-                    safeSet('adminLoggedIn', true);
-                } else {
-                    safeRemove('admin_saved_creds');
-                    safeRemove('adminLoggedIn');
-                }
+                clearAuthInputs();
                 closeAuthModal();
                 updateAdminUI();
                 switchApp('sys2');
                 showToast("เข้าสู่ระบบแอดมินสำเร็จ", "success");
             } else {
-                showToast("ชื่อหรือรหัสผ่านผิด (ค่าเริ่มต้น: admin / suthin)", "error");
+                showToast("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง", "error");
             }
         }
         function resetPass() {
@@ -712,17 +696,17 @@
             if (s !== SECRET) return showToast("รหัสลับผิด!", "error");
             db[u] = p;
             safeSet('admin_db', db);
-            safeSet('admin_saved_creds', { u: u, p: p });
-            loadSavedAdminCreds();
-            showToast("เปลี่ยนรหัสผ่านและจำค่าใหม่สำเร็จ", "success");
+            showToast("เปลี่ยนรหัสผ่านสำเร็จ", "success");
             toggleAuth('login');
         }
         function logoutAdmin() {
             try { sessionStorage.removeItem('adminLoggedIn'); } catch (e) {}
             safeRemove('adminLoggedIn');
+            safeRemove('admin_saved_creds');
+            clearAuthInputs();
             updateAdminUI();
             switchApp('sys1');
-            showToast("ออกจากระบบแอดมินแล้ว (ซ่อนปุ่มสุ่มคะแนนเรียบร้อย)", "success");
+            showToast("ออกจากระบบแอดมินแล้ว", "success");
         }
 
         // ================= RESET DATA LOGIC =================
