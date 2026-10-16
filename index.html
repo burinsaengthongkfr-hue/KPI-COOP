@@ -234,6 +234,7 @@
                     <div class="flex flex-wrap space-x-1 sm:space-x-3">
                         <button id="s2-tab-eval" onclick="s2SwitchTab('eval')" class="bg-slate-900 hover:bg-slate-700 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors">นำเข้าข้อมูล</button>
                         <button id="s2-tab-kpi" onclick="s2SwitchTab('kpi')" class="bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors">คะแนนรวม KPI</button>
+                        <button id="s2-tab-kpi-analysis" onclick="s2SwitchTab('kpi-analysis')" class="bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors">บทวิเคราะห์ KPI</button>
                         <button id="s2-tab-result" onclick="s2SwitchTab('result')" class="bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors">สรุปผล</button>
                         <button id="s2-tab-analysis" onclick="s2SwitchTab('analysis')" class="bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors">บทวิเคราะห์</button>
                     </div>
@@ -322,6 +323,48 @@
                             </thead>
                             <tbody id="s2-kpi-ranking-body" class="divide-y text-sm"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- S2: KPI ANALYSIS DASHBOARD VIEW -->
+            <div id="s2-kpi-analysis-view" class="flex-col gap-6 hidden max-w-6xl mx-auto w-full pb-10">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-2">
+                    <h2 class="text-2xl font-bold text-gray-800">แดชบอร์ดบทวิเคราะห์คะแนนรวม KPI</h2>
+                    <p class="text-xs text-gray-500 mt-1">สรุปภาพรวมคะแนนรายข้อ KPI จากทุกไฟล์ผู้ประเมินที่บันทึกในระบบ</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-emerald-600 text-white rounded-xl p-5 shadow-sm">
+                        <span class="text-emerald-100 text-sm font-semibold">หัวข้อ KPI ที่ได้คะแนนสูงสุดสะสม</span>
+                        <div id="s2-kpi-best-topic" class="text-xl font-bold mt-2">-</div>
+                        <div id="s2-kpi-best-score" class="text-xs text-emerald-100 mt-1">-</div>
+                    </div>
+                    <div class="bg-amber-600 text-white rounded-xl p-5 shadow-sm">
+                        <span class="text-amber-100 text-sm font-semibold">หัวข้อ KPI ที่ควรได้รับการพัฒนา (ต่ำสุด)</span>
+                        <div id="s2-kpi-worst-topic" class="text-xl font-bold mt-2">-</div>
+                        <div id="s2-kpi-worst-score" class="text-xs text-amber-100 mt-1">-</div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border">
+                    <div class="w-full sm:w-64 mb-4">
+                        <select id="s2-kpi-person-select" onchange="s2UpdateKpiAnalysisPerson()" class="w-full border p-2 rounded-lg bg-gray-50 font-medium"></select>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                        <div class="w-full aspect-square max-h-[400px]"><canvas id="s2KpiRadarChart"></canvas></div>
+                        <div class="space-y-4">
+                            <div class="bg-gray-50 rounded-xl p-5 border">
+                                <div class="flex justify-between font-bold text-xl mb-2"><span>คะแนนรวม KPI บุคคล</span><span id="s2-kpi-person-total">0</span></div>
+                                <div class="w-full bg-gray-200 rounded-full h-2"><div id="s2-kpi-person-bar" class="bg-emerald-600 h-2 rounded-full" style="width:0%"></div></div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800 border-l-4 border-emerald-500 pl-2">หัวข้อที่ทำได้โดดเด่น</h4>
+                                <ul id="s2-kpi-top-traits" class="text-sm text-gray-600 ml-3 list-disc mt-2 space-y-1"></ul>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800 border-l-4 border-amber-400 pl-2">หัวข้อที่ควรพัฒนา</h4>
+                                <ul id="s2-kpi-bottom-traits" class="text-sm text-gray-600 ml-3 list-disc mt-2 space-y-1"></ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -512,7 +555,7 @@
         let kpiScores2 = safeGet('sys2_kpi_master_v7', {}); // เก็บคะแนน KPI รายข้อของแต่ละไฟล์ผู้ประเมิน (r = 1..30)
         let importedFilesMap = safeGet('sys2_files_map_v7', {});
         let pendingImports = []; // พักข้อมูลที่ Import เข้ามา รอกดปุ่ม "บันทึกผลลงตาราง"
-        let chart1 = null, chart2 = null;
+        let chart1 = null, chart2 = null, chartKpiAnalysis = null;
         let appInitialized = false;
 
         function isAdminLoggedIn() {
@@ -1692,17 +1735,95 @@
             document.getElementById('s2-kpi-ranking-body').innerHTML = trs;
         }
 
-        function s2SwitchTab(tab) {
-            ['eval','kpi','result','analysis'].forEach(t => {
-                document.getElementById(`s2-${t}-view`).classList.add('hidden');
-                document.getElementById(`s2-${t}-view`).classList.remove('flex');
-                document.getElementById(`s2-tab-${t}`).classList.replace('bg-slate-900','bg-slate-600');
+        // --- KPI ANALYSIS DASHBOARD LOGIC ---
+        function s2RenderKpiAnalysis() {
+            const { aggMatrix, activeFileCount } = getAggregatedKpiData();
+            
+            // คำนวณผลรวมคะแนนในแต่ละหัวข้อ KPI จากทุกคน
+            let topicSums = criteria1.map(c => {
+                let sum = 0;
+                personnel.forEach((p, pIdx) => {
+                    sum += (aggMatrix[pIdx][c.id] || 0);
+                });
+                return { id: c.id, name: c.name, sum };
+            }).sort((a, b) => b.sum - a.sum);
+
+            const best = topicSums[0];
+            const worst = topicSums[topicSums.length - 1];
+
+            document.getElementById('s2-kpi-best-topic').innerText = best ? `${best.id}. ${best.name}` : '-';
+            document.getElementById('s2-kpi-best-score').innerText = best ? `คะแนนรวมสะสมสูงสุด: ${best.sum} คะแนน` : '';
+
+            document.getElementById('s2-kpi-worst-topic').innerText = worst ? `${worst.id}. ${worst.name}` : '-';
+            document.getElementById('s2-kpi-worst-score').innerText = worst ? `คะแนนรวมสะสมต่ำที่สุด: ${worst.sum} คะแนน` : '';
+
+            document.getElementById('s2-kpi-person-select').innerHTML = personnel.map((p, i) => `<option value="${i}">${i+1}. ${p}</option>`).join('');
+            s2UpdateKpiAnalysisPerson();
+        }
+
+        function s2UpdateKpiAnalysisPerson() {
+            const { aggMatrix, activeFileCount } = getAggregatedKpiData();
+            const i = document.getElementById('s2-kpi-person-select').value;
+            const pScores = aggMatrix[i] || {};
+            
+            let total = 0;
+            let data = [];
+            criteria1.forEach(c => {
+                let s = pScores[c.id] || 0;
+                total += s;
+                data.push(s);
             });
-            document.getElementById(`s2-${tab}-view`).classList.remove('hidden');
-            document.getElementById(`s2-${tab}-view`).classList.add((tab === 'eval' || tab === 'kpi') ? 'flex' : 'block');
-            document.getElementById(`s2-tab-${tab}`).classList.replace('bg-slate-600','bg-slate-900');
+
+            const maxPersonScore = activeFileCount > 0 ? activeFileCount * 10 : 10;
+            document.getElementById('s2-kpi-person-total').innerText = `${total} คะแนน`;
+            document.getElementById('s2-kpi-person-bar').style.width = `${Math.min(100, (total / (activeFileCount * 130 || 130)) * 100)}%`;
+
+            let sortedTraits = criteria1.map((c, idx) => ({ n: c.name, s: data[idx] })).sort((a, b) => b.s - a.s);
+            let topTraits = sortedTraits.filter(x => x.s > 0).slice(0, 3);
+            let bottomTraits = [...sortedTraits].reverse().slice(0, 3);
+
+            document.getElementById('s2-kpi-top-traits').innerHTML = topTraits.length ? topTraits.map(x => `<li>${x.n} (${x.s} คะแนน)</li>`).join('') : '<li class="text-gray-400 italic">ไม่มีข้อมูล</li>';
+            document.getElementById('s2-kpi-bottom-traits').innerHTML = bottomTraits.length ? bottomTraits.map(x => `<li>${x.n} (${x.s} คะแนน)</li>`).join('') : '<li class="text-gray-400 italic">ไม่มีข้อมูล</li>';
+
+            if (chartKpiAnalysis) chartKpiAnalysis.destroy();
+            chartKpiAnalysis = new Chart(document.getElementById('s2KpiRadarChart'), {
+                type: 'radar',
+                data: {
+                    labels: criteria1.map(c => c.name.substring(0, 15)),
+                    datasets: [{ label: personnel[i], data: data, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.2)' }]
+                },
+                options: { scales: { r: { suggestedMin: 0 } }, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function s2SwitchTab(tab) {
+            ['eval','kpi','kpi-analysis','result','analysis'].forEach(t => {
+                const el = document.getElementById(`s2-${t}-view`);
+                if (el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+                const btn = document.getElementById(`s2-tab-${t}`);
+                if (btn) btn.classList.replace('bg-slate-900','bg-slate-600');
+            });
+            
+            const targetView = document.getElementById(`s2-${tab}-view`);
+            const targetBtn = document.getElementById(`s2-tab-${tab}`);
+            
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                if (tab === 'eval' || tab === 'kpi' || tab === 'kpi-analysis') {
+                    targetView.classList.add('flex');
+                } else {
+                    targetView.classList.add('block');
+                }
+            }
+            if (targetBtn) {
+                targetBtn.classList.replace('bg-slate-600','bg-slate-900');
+            }
             
             if (tab === 'kpi') s2RenderKpiMatrix();
+            if (tab === 'kpi-analysis') s2RenderKpiAnalysis();
             if (tab === 'result') s2RenderResult();
             if (tab === 'analysis') {
                 document.getElementById('s2-person-select').innerHTML = personnel.map((p, i) => `<option value="${i}">${i+1}. ${p}</option>`).join('');
