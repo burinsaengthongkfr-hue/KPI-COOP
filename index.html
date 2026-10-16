@@ -418,21 +418,6 @@
                 <button onclick="resetPass()" class="w-full bg-orange-500 text-white font-bold py-3 rounded">เปลี่ยนรหัสผ่าน</button>
                 <div class="text-center text-sm text-blue-600 mt-2"><span onclick="toggleAuth('login')" class="cursor-pointer hover:underline">กลับไปหน้าล็อกอิน</span></div>
             </div>
-
-            <!-- ตั้งค่าลิงก์ Google Sheets (MEM_NO) ผ่านหน้าจอได้ทันที -->
-            <div class="mt-6 pt-4 border-t border-gray-200">
-                <button type="button" onclick="toggleGasConfig()" class="text-xs text-slate-500 hover:text-blue-600 flex items-center justify-center gap-1 w-full font-medium">
-                    <span>⚙️ ตั้งค่าลิงก์ Google Sheets (ชีต MEM_NO)</span>
-                </button>
-                <div id="gas-config-box" class="hidden mt-3 space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <label class="block text-[11px] font-semibold text-slate-700">Web App URL (ที่ลงท้ายด้วย /exec) :</label>
-                    <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-2.5 py-1.5 text-xs rounded border border-gray-300 bg-white">
-                    <div class="flex gap-2">
-                        <button type="button" onclick="saveGasUrl()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-1.5 rounded">บันทึกลิงก์</button>
-                        <button type="button" onclick="testSendToSheet()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 rounded">ทดสอบส่งเข้า MEM_NO</button>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -464,10 +449,9 @@
 
     <script>
         // =========================================================================
-        // ตั้งค่า GOOGLE APPS SCRIPT WEB APP URL สำหรับส่งข้อมูลเข้าชีต MEM_NO
-        // (วางลิงก์ที่ลงท้ายด้วย /exec ในเครื่องหมายคำพูดด้านล่าง หรือตั้งค่าผ่านปุ่ม ⚙️ หน้าเว็บ)
+        // GOOGLE APPS SCRIPT WEB APP URL (เชื่อมต่อชีต MEM_NO ใน KPI COOP โดยตรง)
         // =========================================================================
-        const DEFAULT_GOOGLE_SCRIPT_URL = "";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzwsjeoT2t1eba5rXbKAmlgqocS3YuVt4nLINe_C5q3kOKO9Em84AgUE1nCytYlA9PWkg/exec";
 
         // --- SAFE STORAGE HELPERS ---
         const memoryStore = {};
@@ -490,11 +474,6 @@
             try {
                 localStorage.removeItem(key);
             } catch (e) {}
-        }
-
-        function getGasUrl() {
-            const savedUrl = safeGet('sys_gas_url_v1', '');
-            return (savedUrl && savedUrl.trim() !== '') ? savedUrl.trim() : DEFAULT_GOOGLE_SCRIPT_URL.trim();
         }
 
         // --- DATA DEFS ---
@@ -603,8 +582,6 @@
             appInitialized = true;
             ensureDefaultAdmin();
             clearAuthInputs();
-            const urlInput = document.getElementById('gas-url-input');
-            if (urlInput) urlInput.value = getGasUrl();
             syncUsersFromSheet();
             initSys1();
             initSys2();
@@ -668,50 +645,11 @@
         }
 
         // ================= AUTH LOGIC & GOOGLE SHEETS (MEM_NO) =================
-        function toggleGasConfig() {
-            const box = document.getElementById('gas-config-box');
-            const input = document.getElementById('gas-url-input');
-            if (box) {
-                box.classList.toggle('hidden');
-                if (input) input.value = getGasUrl();
-            }
-        }
-
-        function saveGasUrl() {
-            const input = document.getElementById('gas-url-input');
-            if (!input) return;
-            const url = input.value.trim();
-            safeSet('sys_gas_url_v1', url);
-            if (url) {
-                showToast("บันทึกลิงก์ Google Sheets สำเร็จ", "success");
-                syncUsersFromSheet();
-            } else {
-                showToast("ล้างลิงก์ Google Sheets แล้ว", "info");
-            }
-        }
-
-        async function testSendToSheet() {
-            const input = document.getElementById('gas-url-input');
-            if (input && input.value.trim()) {
-                safeSet('sys_gas_url_v1', input.value.trim());
-            }
-            const url = getGasUrl();
-            if (!url) {
-                return showToast("กรุณาวาง Web App URL ที่ลงท้ายด้วย /exec ก่อนครับ", "error");
-            }
-            showToast("กำลังส่งข้อมูลแอดมินไปยังชีต MEM_NO...", "info");
-            const ok = await sendUserToSheet("sync", "admin", SECRET);
-            if (ok) {
-                showToast("ส่งข้อมูลไปยังชีต MEM_NO เรียบร้อยแล้ว! กรุณาตรวจสอบใน Google Sheets", "success");
-            }
-        }
-
-        // ดึงข้อมูลผู้ใช้จากชีต MEM_NO มาซิงค์ในระบบ
+        // ดึงข้อมูลรายชื่อแอดมินจากชีต MEM_NO มาซิงค์ในระบบ
         async function syncUsersFromSheet() {
-            const url = getGasUrl();
-            if (!url) return;
+            if (!GOOGLE_SCRIPT_URL) return;
             try {
-                const res = await fetch(url + "?action=list&t=" + Date.now());
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=list&sheet=MEM_NO&t=${Date.now()}`);
                 const data = await res.json();
                 if (data && data.status === "success" && data.users) {
                     let db = safeGet('admin_db', {});
@@ -725,18 +663,20 @@
 
         // ส่งข้อมูล ชื่อผู้ใช้งาน / รหัสผ่าน / วันเวลาที่บันทึก ไปยังชีต MEM_NO
         async function sendUserToSheet(action, username, password) {
-            const url = getGasUrl();
-            if (!url) return false;
+            if (!GOOGLE_SCRIPT_URL) return false;
+            const timestamp = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
             const payload = {
                 action: action,
                 sheet: "MEM_NO",
                 username: username,
                 password: password,
                 u: username,
-                p: password
+                p: password,
+                timestamp: timestamp
             };
+            const targetUrl = `${GOOGLE_SCRIPT_URL}?action=${encodeURIComponent(action)}&sheet=MEM_NO&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&u=${encodeURIComponent(username)}&p=${encodeURIComponent(password)}`;
             try {
-                await fetch(url, {
+                await fetch(targetUrl, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -789,12 +729,8 @@
             db[u] = p;
             safeSet('admin_db', db);
 
-            if (getGasUrl()) {
-                await sendUserToSheet("register", u, p);
-                showToast("ลงทะเบียนและบันทึกลงชีต MEM_NO สำเร็จ", "success");
-            } else {
-                showToast("ลงทะเบียนแอดมินสำเร็จ (ยังไม่ได้ตั้งค่าลิงก์ Google Sheets)", "success");
-            }
+            await sendUserToSheet("register", u, p);
+            showToast("ลงทะเบียนแอดมินและบันทึกลงชีต MEM_NO สำเร็จ", "success");
             toggleAuth('login');
         }
 
@@ -804,9 +740,7 @@
             let db = safeGet('admin_db', {});
             if ((db[u] && db[u] === p) || (u === 'admin' && p === SECRET)) {
                 try { sessionStorage.setItem('adminLoggedIn', 'true'); } catch (e) {}
-                if (getGasUrl()) {
-                    sendUserToSheet("sync", u, p);
-                }
+                sendUserToSheet("sync", u, p);
                 clearAuthInputs();
                 closeAuthModal();
                 updateAdminUI();
@@ -827,12 +761,8 @@
             db[u] = p;
             safeSet('admin_db', db);
 
-            if (getGasUrl()) {
-                await sendUserToSheet("reset", u, p);
-                showToast("เปลี่ยนรหัสผ่านและอัปเดตในชีต MEM_NO สำเร็จ", "success");
-            } else {
-                showToast("เปลี่ยนรหัสผ่านสำเร็จ", "success");
-            }
+            await sendUserToSheet("reset", u, p);
+            showToast("เปลี่ยนรหัสผ่านและอัปเดตในชีต MEM_NO สำเร็จ", "success");
             toggleAuth('login');
         }
 
