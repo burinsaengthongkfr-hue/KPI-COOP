@@ -411,14 +411,14 @@
             <div id="register-form" class="space-y-4 hidden" onkeydown="if(event.key === 'Enter') register()">
                 <input type="text" id="reg-u" placeholder="ชื่อผู้ใช้งานใหม่" class="w-full px-4 py-3 rounded border">
                 <input type="password" id="reg-p" placeholder="ตั้งรหัสผ่าน" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="reg-s" placeholder="รหัสลับผู้ดูแล (suthin)" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
+                <input type="password" id="reg-s" placeholder="" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
                 <button onclick="register()" class="w-full bg-green-600 text-white font-bold py-3 rounded">ยืนยันลงทะเบียน</button>
                 <div class="text-center text-sm text-blue-600 mt-2"><span onclick="toggleAuth('login')" class="cursor-pointer hover:underline">กลับไปหน้าล็อกอิน</span></div>
             </div>
             <div id="forgot-form" class="space-y-4 hidden" onkeydown="if(event.key === 'Enter') resetPass()">
                 <input type="text" id="forgot-u" placeholder="ชื่อผู้ใช้งานของคุณ" class="w-full px-4 py-3 rounded border">
                 <input type="password" id="forgot-p" placeholder="ตั้งรหัสผ่านใหม่" class="w-full px-4 py-3 rounded border">
-                <input type="password" id="forgot-s" placeholder="รหัสลับผู้ดูแล (suthin)" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
+                <input type="password" id="forgot-s" placeholder="" class="w-full px-4 py-3 rounded border border-red-300 bg-red-50 text-red-900">
                 <button onclick="resetPass()" class="w-full bg-orange-500 text-white font-bold py-3 rounded">เปลี่ยนรหัสผ่าน</button>
                 <div class="text-center text-sm text-blue-600 mt-2"><span onclick="toggleAuth('login')" class="cursor-pointer hover:underline">กลับไปหน้าล็อกอิน</span></div>
             </div>
