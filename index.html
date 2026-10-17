@@ -10,7 +10,23 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
     
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; }
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background-color: #f3f4f6;
+            /* ป้องกันการลากคลุมดำเพื่อคัดลอกข้อความในหน้าเว็บ */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        /* อนุญาตให้คลิกและพิมพ์ในช่องกรอกคะแนนและช่องล็อกอินได้ตามปกติ */
+        input, textarea, select {
+            -webkit-user-select: auto;
+            -moz-user-select: auto;
+            -ms-user-select: auto;
+            user-select: auto;
+        }
         .table-container {
             max-width: 100%;
             overflow-x: auto;
@@ -46,7 +62,7 @@
         }
     </style>
 </head>
-<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+<body class="text-gray-800 antialiased min-h-screen flex flex-col" oncontextmenu="return false;" oncopy="return false;" oncut="return false;" ondragstart="return false;">
 
     <!-- Global App Switcher -->
     <div class="w-full bg-slate-900 py-2 px-4 sm:px-6 lg:px-8 flex justify-between items-center z-50 no-print shadow-md">
@@ -491,6 +507,57 @@
     <div id="toast-container" class="fixed bottom-5 right-5 z-[200] flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
+        // =========================================================================
+        // ANTI-INSPECT & ANTI-COPY PROTECTION (ป้องกันคลิกขวาและปุ่มลัดเปิดดูโค้ด)
+        // =========================================================================
+        (function() {
+            // 1. บล็อกการคลิกขวาทุกรูปแบบ
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            }, true);
+
+            // 2. บล็อกการคัดลอก การตัด และการลากวางข้อความจากหน้าเว็บ
+            ['copy', 'cut', 'dragstart', 'selectstart'].forEach(function(evt) {
+                document.addEventListener(evt, function(e) {
+                    const tag = e.target && e.target.tagName ? e.target.tagName.toUpperCase() : '';
+                    if (tag === 'INPUT' || tag === 'TEXTAREA') return; // อนุญาตให้ทำงานในช่องกรอกข้อมูลได้ปกติ
+                    e.preventDefault();
+                    return false;
+                }, true);
+            });
+
+            // 3. บล็อกปุ่มลัด F12, Ctrl+Shift+I/J/C/K, Ctrl+U (ดูซอร์สโค้ด), Ctrl+S (บันทึกเว็บ), Ctrl+C
+            document.addEventListener('keydown', function(e) {
+                const key = (e.key || '').toUpperCase();
+                const code = e.keyCode || e.which;
+                const ctrlOrMeta = e.ctrlKey || e.metaKey;
+
+                // บล็อก F12
+                if (key === 'F12' || code === 123) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+
+                // บล็อก Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+Shift+K (และ Cmd+Option+I/J/C/U บน Mac)
+                if (ctrlOrMeta && (e.shiftKey || e.altKey) && ['I', 'J', 'C', 'K', 'U'].includes(key)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+
+                // บล็อก Ctrl+U (View Source), Ctrl+S (Save Page), Ctrl+C (Copy), Ctrl+A (Select All นอกช่อง Input)
+                if (ctrlOrMeta && ['U', 'S', 'C', 'A'].includes(key)) {
+                    const tag = e.target && e.target.tagName ? e.target.tagName.toUpperCase() : '';
+                    if (tag === 'INPUT' && (key === 'A')) return; // อนุญาตให้เลือกตัวเลขในช่อง input ได้
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, true);
+        })();
+
         // =========================================================================
         // GOOGLE APPS SCRIPT WEB APP URL (เชื่อมต่อชีต MEM_NO ใน KPI COOP โดยตรง)
         // =========================================================================
